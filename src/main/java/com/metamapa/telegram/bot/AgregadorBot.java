@@ -40,14 +40,17 @@ public class AgregadorBot implements BotCommandHandler {
         String coleccionId = "";
 
         try {
-            coleccionId = messageTextReceived.substring(8).trim();
+            final String commandPrefix = "/hechos "; 
+
+        if (messageTextReceived.startsWith(commandPrefix)) {
+            
+            coleccionId = messageTextReceived.substring(commandPrefix.length()).trim();
 
             if (coleccionId.isEmpty()) {
-                responseText = "Por favor, especifica un ID de colección. Ejemplo: /hechos ejemplo";
+                responseText = "Por favor, especifica un ID (nombre) de colección. Ejemplo: /hechos miColeccion";
             } else {
-
+                
                 String url = API_BASE_URL + coleccionId + "/hechos";
-
                 HechoDTO[] hechosArray = restTemplate.getForObject(url, HechoDTO[].class);
 
                 if (hechosArray == null || hechosArray.length == 0) {
@@ -62,17 +65,26 @@ public class AgregadorBot implements BotCommandHandler {
                     responseText = sb.toString();
                 }
             }
-        } catch (HttpClientErrorException.NotFound e) {
-            responseText = "Error: No se encontró una colección con el ID: '" + coleccionId + "'.";
-        } catch (RestClientException e) {
-            responseText = "Error de conexión: No se pudo contactar al servidor de colecciones.";
-            e.printStackTrace();
-        } catch (Exception e) {
-            responseText = "Ocurrió un error inesperado al procesar tu solicitud.";
-            e.printStackTrace();
-        }
 
-        message.setText(responseText);
-        return message;
+        } else if (messageTextReceived.equals("/hechos")) {
+            responseText = "Por favor, especifica un ID (nombre) de colección. Ejemplo: /hechos miColeccion";
+        
+        } else {
+            responseText = "Comando no válido. Usa: /hechos <idColeccion>";
+        }
+    
+    } catch (HttpClientErrorException.NotFound e) {
+        responseText = "Error: No se encontró una colección con el ID: '" + coleccionId + "'.";
+    } catch (RestClientException e) {
+        responseText = "Error de conexión: No se pudo contactar al servidor de colecciones.";
+        e.printStackTrace(); 
+    } catch (Exception e) {
+       
+        responseText = "Ocurrió un error inesperado al procesar tu solicitud.";
+        e.printStackTrace();
+    }
+
+    message.setText(responseText);
+    return message;
     }
 }
