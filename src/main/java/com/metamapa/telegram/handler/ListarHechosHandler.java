@@ -14,13 +14,13 @@ import java.util.Arrays;
 import java.util.List;
 
 @Component
-public class AgregadorBot implements BotCommandHandler {
+public class ListarHechosHandler implements BotCommandHandler {
 
     private final RestTemplate restTemplate;
     private final String API_BASE_URL = "https://two025-tp-entrega-2-zoedominguez-bsuh.onrender.com/colecciones/";
 
     @Autowired
-    public AgregadorBot(RestTemplate restTemplate) {
+    public ListarHechosHandler(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
