@@ -1,7 +1,7 @@
-package com.metamapa.telegram.bot;
+package com.metamapa.telegram.handler;
 
 import com.metamapa.telegram.DTO.HechoDTO;
-import com.metamapa.telegram.handler.BotCommandHandler;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
