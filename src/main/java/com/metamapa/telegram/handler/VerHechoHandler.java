@@ -1,12 +1,13 @@
 package com.metamapa.telegram.handler;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-
-import io.github.cdimascio.dotenv.Dotenv;
 
 import java.util.List;
 import java.util.Map;
@@ -20,22 +21,20 @@ public class VerHechoHandler implements BotCommandHandler {
     public VerHechoHandler(RestTemplate rest) {
         this.rest = rest;
 
-        // ENV real
-        String url = System.getenv("FUENTES_API_URL");
-        // .env
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .systemProperties()
+                .load();
+
+        String url = dotenv.get("FUENTES_API_URL");
         if (url == null || url.isBlank()) {
-            Dotenv d = Dotenv.configure()
-                    .ignoreIfMissing()  // no rompe si no está el archivo
-                    .load();
-            url = d.get("FUENTES_API_URL");
+            throw new IllegalStateException("Falta variable FUENTES_API_URL en .env o entorno");
         }
-        if (url == null || url.isBlank()) {
-            throw new IllegalStateException("Falta FUENTES_API_URL (env var o .env)");
-        }
-        this.baseUrl = url.endsWith("/") ? url.substring(0, url.length()-1) : url;
+        this.baseUrl = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
-    @Override public boolean canHandle(String command) {
+    @Override
+    public boolean canHandle(String command) {
         return command != null && command.trim().toLowerCase().startsWith("/hecho ");
     }
 
@@ -55,12 +54,12 @@ public class VerHechoHandler implements BotCommandHandler {
             if (h == null || h.isEmpty())
                 return new SendMessage(chatId.toString(), "No encontré el hecho " + id + ".");
 
-            String titulo = s(h.get("titulo"), "(sin título)");
-            String nombreColeccion = s(h.get("nombreColeccion"), null);
-            String categoria = s(h.get("categoria"), null);
-            String ubicacion = s(h.get("ubicacion"), null);
-            String fecha = s(h.get("fecha"), null);
-            String origen = s(h.get("origen"), null);
+            String titulo = s(h.get("titulo"), "(sin título)"),
+                   nombreColeccion = s(h.get("nombreColeccion"), null),
+                   categoria = s(h.get("categoria"), null),
+                   ubicacion = s(h.get("ubicacion"), null),
+                   fecha = s(h.get("fecha"), null),
+                   origen = s(h.get("origen"), null);
 
             StringBuilder sb = new StringBuilder();
             sb.append("*").append(titulo).append("*\n");
@@ -71,33 +70,48 @@ public class VerHechoHandler implements BotCommandHandler {
             if (fecha != null)           sb.append("Fecha: ").append(fecha).append("\n");
             if (origen != null)          sb.append("Origen: ").append(origen).append("\n");
 
-            ResponseEntity<List> r = rest.getForEntity(baseUrl + "/hecho/" + id + "/pdis", List.class);
-            List<Map<String, Object>> pdis = (List<Map<String, Object>>) (List<?>) r.getBody();
+            // --- PDIs: intentar, pero NO romper la visualización si falla ---
+            boolean pdisOk = false;
+            try {
+                ResponseEntity<List> r = rest.getForEntity(baseUrl + "/hecho/" + id + "/pdis", List.class);
+                List<Map<String, Object>> pdis = (List<Map<String, Object>>) (List<?>) r.getBody();
 
-            if (pdis != null && !pdis.isEmpty()) {
-                sb.append("\n*PDIs (").append(pdis.size()).append("):*\n");
-                int n = 1;
-                for (Map<String, Object> p : pdis) {
-                    String pdiId   = s(p.get("id"), "-");
-                    String descr   = s(p.get("descripcion"), "(sin descripción)");
-                    String lugar   = s(p.get("lugar"), null);
-                    String momento = s(p.get("momento"), null);
-                    String cont    = s(p.get("contenido"), null);
+                if (pdis != null && !pdis.isEmpty()) {
+                    pdisOk = true;
+                    sb.append("\n*PDIs (").append(pdis.size()).append("):*\n");
+                    int n = 1;
+                    for (Map<String, Object> p : pdis) {
+                        String pdiId   = s(p.get("id"), "-");
+                        String descr   = s(p.get("descripcion"), "(sin descripción)");
+                        String lugar   = s(p.get("lugar"), null);
+                        String momento = s(p.get("momento"), null);
+                        String cont    = s(p.get("contenido"), null);
 
-                    sb.append(n++).append(". ").append(descr).append("\n");
-                    sb.append("   ID: ").append(pdiId).append("\n");
-                    if (lugar != null)   sb.append("   Lugar: ").append(lugar).append("\n");
-                    if (momento != null) sb.append("   Momento: ").append(momento).append("\n");
-                    if (cont != null) {
-                        String l = cont.trim().toLowerCase();
-                        boolean isUrl = l.startsWith("http://") || l.startsWith("https://");
-                        boolean isImg = isUrl && (l.endsWith(".jpg")||l.endsWith(".jpeg")||l.endsWith(".png")||l.endsWith(".gif")||l.endsWith(".webp"));
-                        if (isImg) sb.append("   🖼️ ").append(cont).append("\n");
-                        else if (isUrl) sb.append("   🔗 ").append(cont).append("\n");
-                        else sb.append("   Contenido: ").append(cont).append("\n");
+                        sb.append(n++).append(". ").append(descr).append("\n");
+                        sb.append("   ID: ").append(pdiId).append("\n");
+                        if (lugar != null)   sb.append("   Lugar: ").append(lugar).append("\n");
+                        if (momento != null) sb.append("   Momento: ").append(momento).append("\n");
+                        if (cont != null) {
+                            String l = cont.trim().toLowerCase();
+                            boolean isUrl = l.startsWith("http://") || l.startsWith("https://");
+                            boolean isImg = isUrl && (l.endsWith(".jpg")||l.endsWith(".jpeg")||l.endsWith(".png")||l.endsWith(".gif")||l.endsWith(".webp"));
+                            if (isImg) sb.append("   🖼️ ").append(cont).append("\n");
+                            else if (isUrl) sb.append("   🔗 ").append(cont).append("\n");
+                            else sb.append("   Contenido: ").append(cont).append("\n");
+                        }
                     }
                 }
-            } else {
+            } catch (HttpStatusCodeException e) {
+                // 4xx/5xx del endpoint de PDIs: degradar con aviso
+                sb.append("\n*PDIs:* no disponibles (").append(e.getStatusCode().value()).append(")\n");
+            } catch (ResourceAccessException e) {
+                // timeouts/conexión
+                sb.append("\n*PDIs:* no disponibles (timeout/conexión)\n");
+            } catch (Exception e) {
+                sb.append("\n*PDIs:* no disponibles\n");
+            }
+
+            if (!pdisOk && !sb.toString().contains("*PDIs:*")) {
                 sb.append("\n*PDIs:* (no hay)\n");
             }
 
