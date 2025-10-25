@@ -77,9 +77,12 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
         }
 
         try {
-            var json = String.format(
-                    "{\"id\":null,\"descripcion\":\"%s\",\"estado\":null,\"hechoId\":\"%s\"}",
-                    descripcion.replace("\"","\\\""), hechoId);
+            String json = String.format(
+                    "{\"descripcion\":\"%s\",\"estado\":\"CREADA\",\"hecho_id\":\"%s\"}",
+                    descripcion.replace("\"","\\\""),
+                    hechoId
+            );
+
 
             var req = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl)) // POST /solicitudes
