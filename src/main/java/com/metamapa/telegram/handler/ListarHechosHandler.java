@@ -64,8 +64,8 @@ public class ListarHechosHandler implements BotCommandHandler {
                         
                         sb.append("• Título: ").append(hecho.titulo()).append("\n");
 
-                        if (hecho.etiqueta() != null){
-                            sb.append("• Etiqueta: ").append(hecho.etiqueta()).append("\n");
+                        if (hecho.etiquetas() != null){
+                            sb.append("• Etiqueta: ").append(hecho.etiquetas()).append("\n");
                         }
                         if (hecho.categoria() != null){
                             sb.append("• Categoría: ").append(hecho.categoria()).append("\n");
