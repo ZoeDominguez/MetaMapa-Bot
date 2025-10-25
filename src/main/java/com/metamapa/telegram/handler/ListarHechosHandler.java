@@ -10,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 
@@ -58,9 +59,31 @@ public class ListarHechosHandler implements BotCommandHandler {
                 } else {
                     List<HechoDTO> hechos = Arrays.asList(hechosArray);
                     StringBuilder sb = new StringBuilder("Hechos para '" + coleccionId + "':\n\n");
+
                     for (HechoDTO hecho : hechos) {
+                        
                         sb.append("• Título: ").append(hecho.titulo()).append("\n");
-                        sb.append("  (ID: ").append(hecho.id()).append(")\n\n");
+
+                        if (hecho.etiqueta() != null){
+                            sb.append("• Etiqueta: ").append(hecho.etiqueta()).append("\n");
+                        }
+                        if (hecho.categoria() != null){
+                            sb.append("• Categoría: ").append(hecho.categoria()).append("\n");
+                        }
+                        if (hecho.ubicacion() != null){
+                            sb.append("• Ubicación: ").append(hecho.ubicacion()).append("\n");
+                        }
+                        if (hecho.fecha() != null)
+                        {
+                            sb.append("• Fecha: ").append(hecho.fecha()).append("\n");
+                        }
+                        if (hecho.origen() != null)
+                        {
+                            sb.append("• Origen: ").append(hecho.origen()).append("\n");
+                        }
+                            
+                        sb.append("\n");
+
                     }
                     responseText = sb.toString();
                 }
