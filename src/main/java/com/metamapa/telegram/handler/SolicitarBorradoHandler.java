@@ -1,5 +1,7 @@
 package com.metamapa.telegram.handler;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -16,6 +18,9 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
 
     private HttpResponse<String> sendWithRetry(HttpRequest req) throws Exception {
         int attempts = 0;
@@ -55,7 +60,8 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
     public boolean canHandle(String command) {
         if (command == null) return false;
         String token = command.trim().split("\\s+")[0].toLowerCase();
-        int at = token.indexOf('@'); if (at > 0) token = token.substring(0, at);
+        int at = token.indexOf('@');
+        if (at > 0) token = token.substring(0, at);
         return token.equals("/solicitar_borrado") || token.equals("/solicitud_borrado");
     }
 
@@ -67,13 +73,14 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
         var parts = text.split("\\s+");
         if (parts.length < 3) {
             return new SendMessage(chatId,
-                    "Uso: /solicitar_borrado <hechoId> <descripcion (≥500)>");
+                    "Uso: /solicitar_borrado <hechoId> <descripcion (≥500 caracteres)>");
         }
         var hechoId = parts[1];
         var descripcion = text.substring(text.indexOf(hechoId) + hechoId.length()).trim();
 
         if (descripcion.length() < 500) {
-            return new SendMessage(chatId, "La descripción debe tener al menos 500 caracteres.");
+            return new SendMessage(chatId,
+                    "❗ La descripción debe tener al menos 500 caracteres.");
         }
 
         try {
@@ -83,7 +90,6 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
                     hechoId
             );
 
-
             var req = HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl)) // POST /solicitudes
                     .header("Content-Type","application/json")
@@ -92,11 +98,45 @@ public class SolicitarBorradoHandler implements BotCommandHandler {
                     .build();
 
             var resp = sendWithRetry(req);
-            return new SendMessage(chatId,
-                    "Crear solicitud → HTTP " + resp.statusCode() + "\n" + resp.body());
+            int status = resp.statusCode();
+            String body = resp.body();
+
+            if (status == 200 || status == 201) {
+                JsonNode node = MAPPER.readTree(body);
+
+                String id = node.path("id").asText("¿sin id?");
+                String estado = node.path("estado").asText("DESCONOCIDO");
+                String hechoResp = node.path("hechoId").asText(hechoId);
+
+                String msg = "📨 Solicitud creada con éxito.\n\n"
+                        + "📝 ID: " + id + "\n"
+                        + "🔗 Hecho: " + hechoResp + "\n"
+                        + "📌 Estado inicial: " + estado + "\n\n"
+                        + "Tu solicitud quedó registrada correctamente.";
+
+                return new SendMessage(chatId, msg);
+            } else {
+                // Intentamos extraer un mensaje de error amigable
+                String errorMsg = extraerMensajeError(body);
+                String msg = "❗ No se pudo crear la solicitud (HTTP " + status + ").\n"
+                        + errorMsg;
+                return new SendMessage(chatId, msg);
+            }
 
         } catch (Exception e) {
-            return new SendMessage(chatId, "Error al crear solicitud: " + e.getMessage());
+            return new SendMessage(chatId,
+                    "❗ Error al crear la solicitud: " + e.getMessage());
         }
     }
+
+    private String extraerMensajeError(String body) {
+        try {
+            JsonNode node = MAPPER.readTree(body);
+            if (node.has("error")) {
+                return node.get("error").asText();
+            }
+        } catch (Exception ignored) { }
+        return body != null && !body.isBlank() ? body : "Error desconocido.";
+    }
+
 }
