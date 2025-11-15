@@ -30,27 +30,40 @@ public class MetaMapaBot extends TelegramLongPollingBot {
 
     @Override
     public void onUpdateReceived(Update update) {
-        if (!update.hasMessage() || !update.getMessage().hasText()) {
-            return; 
+        String command = null;
+        Long chatId = null;
+
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            command = update.getMessage().getText();
+            chatId = update.getMessage().getChatId();
+        } else if (update.hasCallbackQuery()) {
+            command = update.getCallbackQuery().getData();
+            chatId = update.getCallbackQuery().getMessage().getChatId();
         }
 
-        String messageText = update.getMessage().getText();
-        Long chatId = update.getMessage().getChatId();
+        if (command == null) {
+            return;
+        }
+
         BotApiMethod<?> response = null;
 
         for (BotCommandHandler handler : handlers) {
-            if (handler.canHandle(messageText)) {
+            if (handler.canHandle(command)) {
                 response = handler.handle(update); 
-                break; 
+                break;
             }
         }
 
-        if (response == null) {
-            response = new SendMessage(chatId.toString(), "Comando no reconocido.");
+        if (response == null && chatId != null) {
+            if (update.hasMessage()) {
+                response = new SendMessage(chatId.toString(), "Comando no reconocido.");
+            }
         }
 
         try {
-            execute(response);
+            if (response != null) {
+                execute(response);
+            }
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
