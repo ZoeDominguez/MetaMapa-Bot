@@ -43,7 +43,7 @@ public class AgregarPdiHandler implements BotCommandHandler {
 
         String usage = """
                 Uso:
-                /agregar_pdi <hechoId> | <descripcion> | [lugar] | [momentoISO] | [urlImagen] | [textoImagen] | [etiquetas separadas por coma]
+                /agregar_pdi <hechoId> | <descripcion> | [lugar] | [momentoISO] | [urlImagen]
                 """;
 
         String[] cmdAndArgs = text.split("\\s+", 2);
@@ -97,11 +97,11 @@ public class AgregarPdiHandler implements BotCommandHandler {
                 return new SendMessage(chatId.toString(), ok);
             }
             return new SendMessage(chatId.toString(),
-                    "Error " + resp.getStatusCode());
+                    "❌ No se pudo agregar el PDI. Hubo un problema con el servidor remoto.");
 
         } catch (Exception e) {
             return new SendMessage(chatId.toString(),
-                    "No pude crear el PDI.\n" + e.getMessage());
+                    "❌ Ocurrió un error inesperado al intentar guardar el PDI.");
         }
     }
 
