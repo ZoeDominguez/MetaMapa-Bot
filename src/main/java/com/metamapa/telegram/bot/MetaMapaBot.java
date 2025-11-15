@@ -46,10 +46,11 @@ public class MetaMapaBot extends TelegramLongPollingBot {
         }
 
         BotApiMethod<?> response = null;
+        List<BotApiMethod<?>> responses = null;
 
         for (BotCommandHandler handler : handlers) {
             if (handler.canHandle(command)) {
-                response = handler.handle(update); 
+                responses = handler.handleBatch(update); 
                 break;
             }
         }
@@ -61,8 +62,10 @@ public class MetaMapaBot extends TelegramLongPollingBot {
         }
 
         try {
-            if (response != null) {
-                execute(response);
+            if (response != null && !responses.isEmpty()) {
+                for (BotApiMethod<?> msg : responses) {
+                    execute(msg);
+                }
             }
         } catch (TelegramApiException e) {
             e.printStackTrace();
