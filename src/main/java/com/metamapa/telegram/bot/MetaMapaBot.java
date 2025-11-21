@@ -62,7 +62,7 @@ public class MetaMapaBot extends TelegramLongPollingBot {
         }
 
         try {
-            if (response != null && !responses.isEmpty()) {
+            if (responses != null && !responses.isEmpty()) {
                 for (BotApiMethod<?> msg : responses) {
                     execute(msg);
                 }
